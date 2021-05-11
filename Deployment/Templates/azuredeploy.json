@@ -1,0 +1,140 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "ProjectName": {
+            "type": "string",
+            "metadata": {
+                "description": "Name of PROJECT"
+            }
+        },
+        "StorageAccountType": {
+            "type": "string",
+            "allowedValues": [    
+                "Standard_LRS", 
+                "Standard_GRS", 
+                "Standard_RAGRS", 
+                "Standard_ZRS",
+                "Premium_LRS",
+                "Premium_ZRS",
+                "Standard_GZRS", 
+                "Standard_RAGZRS"
+            ],
+            "metadata": {
+                "description": "Type of storage account"
+            }
+        },
+        "AzureMLSKU": {
+            "type": "string",
+            "allowedValues": [
+                "Basic",
+                "Enterprise"
+            ],
+            "metadata": {
+                "description": "Type of Azure ML Workspace"
+            }
+        }
+    },
+    "variables": {
+        "StorageAccountName": "[toLower(concat(parameters('ProjectName'), 'sa'))]",
+        "KeyVaultName": "[toLower(concat(parameters('ProjectName'),'-kv'))]",
+        "APPInsightsName": "[toLower(concat(parameters('ProjectName'), '-insights'))]",
+        "AzureMLWorkspaceName": "[toLower(concat(parameters('ProjectName'), '-mlworkspace'))]",
+        "AzureContainerRegistryName": "[toLower(concat(parameters('ProjectName'), 'registry'))]"
+    },
+    "resources": [
+        //-- Storage Account
+        {
+            "type": "Microsoft.Storage/storageAccounts",
+            "apiVersion": "2019-04-01",
+            "name": "[variables('StorageAccountName')]",
+            "location": "[resourceGroup().location]",
+            "sku": {
+                "name": "[parameters('StorageAccountType')]"
+            },
+            "kind": "StorageV2",
+            "properties": {
+                "encryption": {
+                    "services": {
+                        "blob": {
+                            "enabled": true
+                        },
+                        "file": {
+                            "enabled": true
+                        }
+                    },
+                    "keySource": "Microsoft.Storage"
+                },
+                "supportsHttpsTrafficOnly": true
+            }
+        },
+        //-- Key Vault
+        {
+            "type": "Microsoft.KeyVault/vaults",
+            "apiVersion": "2018-02-14",
+            "name": "[variables('KeyVaultName')]",
+            "location": "[resourceGroup().location]",
+            "properties": {
+                "tenantId": "[subscription().tenantId]",
+                "sku": {
+                    "name": "standard",
+                    "family": "A"
+                },
+                "accessPolicies": []
+            }
+        },
+        //-- App Insights
+        {
+            "type": "Microsoft.Insights/components",
+            "apiVersion": "2018-05-01-preview",
+            "name": "[variables('APPInsightsName')]",
+            "location": "[resourceGroup().location]",
+            "kind": "web",
+            "properties": {
+                "Application_Type": "web"
+            }
+        },
+        //-- Azure Container Registry
+        {
+            "name": "[variables('AzureContainerRegistryName')]",
+            "type": "Microsoft.ContainerRegistry/registries",
+            "apiVersion": "2017-10-01",
+            "location": "[resourceGroup().location]",
+            "sku": {
+                "name": "Standard"
+            },
+            "properties": {
+                "adminUserEnabled": true
+            }
+        },
+        //-- MachineLearning Workspace
+        {
+            "type": "Microsoft.MachineLearningServices/workspaces",
+            "apiVersion": "2019-11-01",
+            "name": "[variables('AzureMLWorkspaceName')]",
+            "location": "[resourceGroup().location]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+                "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]",
+                "[resourceId('Microsoft.Insights/components', variables('APPInsightsName'))]",
+                "[resourceId('Microsoft.ContainerRegistry/registries', variables('AzureContainerRegistryName'))]"
+            ],
+            "identity": {
+                "type": "systemAssigned"
+            },
+            "sku": {
+                "tier": "[parameters('AzureMLSKU')]",
+                "name": "[parameters('AzureMLSKU')]"
+            },
+            "properties": {
+                "friendlyName": "[variables('AzureMLWorkspaceName')]",
+                "keyVault": "[resourceId('Microsoft.KeyVault/vaults',variables('keyVaultName'))]",
+                "applicationInsights": "[resourceId('Microsoft.Insights/components',variables('APPInsightsName'))]",
+                "storageAccount": "[resourceId('Microsoft.Storage/storageAccounts/',variables('storageAccountName'))]",
+                "containerRegistry": "[resourceId('Microsoft.ContainerRegistry/registries', variables('AzureContainerRegistryName'))]"
+            }
+        }
+    ],
+    "outputs": {},
+    "functions": []
+}
