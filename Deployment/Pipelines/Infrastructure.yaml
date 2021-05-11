@@ -85,6 +85,6 @@ stages:
                     resourceGroupName: "$(resourceGroup)"
                     location: $(location)
                     templateLocation: "Linked artifact"
-                    csmFile: "$(System.DefaultWorkingDirectory)/Deployment/Templates/azuredeploy.json"
-                    csmParametersFile: "$(System.DefaultWorkingDirectory)/Deployment/Templates/azuredeploy.parameters.json"
+                    csmFile: "$(System.DefaultWorkingDirectory)/TemplateARM/azuredeploy.json"
+                    csmParametersFile: "$(System.DefaultWorkingDirectory)/TemplateARM/azuredeploy.parameters.json"
                     deploymentMode: "Complete"
