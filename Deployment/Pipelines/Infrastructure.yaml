@@ -12,7 +12,7 @@ pool:
 
 variables:
   - name: 'serviceConnection'
-    value: 'Azure para estudiantes'
+    value: 'MLOps-Pipeline'
   - name: 'subscriptionId'
     value: 'c3bd55f6-1e8f-4e7e-af0c-0426a1d753f6'
   - name: 'location'
