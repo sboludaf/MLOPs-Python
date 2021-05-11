@@ -1,0 +1,90 @@
+trigger:
+  batch: true
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - Deployment/Pipelines/Infrastructure.yaml
+
+pool:
+  vmImage: "windows-2019"
+
+variables:
+  - name: 'serviceConnection'
+    value: 'Azure para estudiantes'
+  - name: 'subscriptionId'
+    value: 'c3bd55f6-1e8f-4e7e-af0c-0426a1d753f6'
+  - name: 'location'
+    value: 'euwe'
+  ## Resources
+  - name: 'resourceGroup'
+    value: 'MLops'
+    
+stages:
+  - stage: Build
+    jobs:
+      - job: Build
+        steps:
+          - task: AzureResourceManagerTemplateDeployment@3
+            inputs:
+              deploymentScope: "Resource Group"
+              azureResourceManagerConnection: $(serviceConnection)
+              subscriptionId: $(subscriptionId)
+              action: "Create Or Update Resource Group"
+              resourceGroupName: "$(resourceGroup)"
+              location: $(location)
+              templateLocation: "Linked artifact"
+              csmFile: "$(System.DefaultWorkingDirectory)/Deployment/Templates/azuredeploy.json"
+              csmParametersFile: "$(System.DefaultWorkingDirectory)/Deployment/Templates/azuredeploy.parameters.json"
+              deploymentMode: "Validation"
+
+          - task: PublishPipelineArtifact@1
+            inputs:
+              targetPath: "$(System.DefaultWorkingDirectory)/Deployment/Templates"
+              artifact: "TemplateARM"
+              publishLocation: "pipeline"
+
+  - stage: Validation
+    dependsOn: Build
+    jobs:
+      - deployment: Validation
+        environment: Validation
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzurePowerShell@5
+                  inputs:
+                    azureSubscription: $(serviceConnection)
+                    azurePowerShellVersion: "LatestVersion"
+                    ScriptType: "InlineScript"
+                    Inline: |
+                      New-AzResourceGroupDeployment `
+                      -Whatif `
+                      -ResourceGroupName "$(resourceGroup)" `
+                      -TemplateUri $(Pipeline.Workspace)/TemplateARM/azuredeploy.json `
+                      -TemplateParameterFile $(Pipeline.Workspace)/TemplateARM/azuredeploy.parameters.json
+
+  - stage: Deploy
+    dependsOn: Deploy
+    jobs:
+      - deployment: Deploy
+        displayName: "Deploy Infrastructure"
+        environment: Deploy
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureResourceManagerTemplateDeployment@3
+                  inputs:
+                    deploymentScope: "Resource Group"
+                    azureResourceManagerConnection: $(serviceConnection)
+                    subscriptionId: $(subscriptionId)
+                    action: "Create Or Update Resource Group"
+                    resourceGroupName: "$(resourceGroup)"
+                    location: $(location)
+                    templateLocation: "Linked artifact"
+                    csmFile: "$(System.DefaultWorkingDirectory)/Deployment/Templates/azuredeploy.json"
+                    csmParametersFile: "$(System.DefaultWorkingDirectory)/Deployment/Templates/azuredeploy.parameters.json"
+                    deploymentMode: "Complete"
