@@ -67,7 +67,7 @@ stages:
                       -TemplateParameterFile $(Pipeline.Workspace)/TemplateARM/azuredeploy.parameters.json
 
   - stage: Deploy
-    dependsOn: Deploy
+    dependsOn: Validation
     jobs:
       - deployment: Deploy
         displayName: "Deploy Infrastructure"
